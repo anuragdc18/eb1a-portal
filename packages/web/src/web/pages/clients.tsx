@@ -5,8 +5,7 @@ import { StatusBadge, PriorityBadge } from "../components/ui/badge";
 import { ProgressBar, CircularProgress } from "../components/ui/progress";
 import { Avatar } from "../components/ui/avatar";
 import { getVisibleClients, CLIENTS, toggleAdminClientAccess, ADMIN_CLIENT_ACCESS, type Client } from "../lib/portal-data";
-import { DEMO_ACCOUNTS } from "../lib/auth-context";
-import { useAuth } from "../lib/auth-context";
+import { useAuth, type AuthAccount } from "../lib/auth-context";
 
 const STATUS_ACCENT: Record<string, { bg: string; color: string }> = {
   Active:     { bg: "#0d2b1a", color: "#4ade80" },
@@ -14,8 +13,6 @@ const STATUS_ACCENT: Record<string, { bg: string; color: string }> = {
   Delayed:    { bg: "#2d0f0f", color: "#f87171" },
   "On Hold":  { bg: "#1a1a1a", color: "#737373" },
 };
-
-const ADMIN_USERS = Object.values(DEMO_ACCOUNTS).filter((u) => u.role === "admin");
 
 // ── Add Client Modal ────────────────────────────────────────
 function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClose: () => void; onAdded: () => void }) {
@@ -164,10 +161,12 @@ function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClos
 // ── Assign Admin Modal ───────────────────────────────────────
 function AssignAdminModal({
   client,
+  admins,
   onClose,
   onChanged,
 }: {
   client: Client;
+  admins: AuthAccount[];
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -197,7 +196,7 @@ function AssignAdminModal({
           </div>
         </div>
         <div className="space-y-2">
-          {ADMIN_USERS.map((admin) => {
+          {admins.map((admin) => {
             const shared = isShared(admin.id);
             return (
               <button
@@ -375,18 +374,19 @@ function ClientDrawer({ client, onClose }: { client: Client; onClose: () => void
 }
 
 export default function ClientsPage() {
-  const { user } = useAuth();
+  const { user, accounts } = useAuth();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [selected, setSelected] = useState<Client | null>(null);
   const [assignTarget, setAssignTarget] = useState<Client | null>(null);
-  const [accessVersion, setAccessVersion] = useState(0);
+  const [, setAccessVersion] = useState(0);
   const [showAddClient, setShowAddClient] = useState(false);
 
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin";
   const canAddClient = isSuperAdmin || isAdmin;
   const visibleClients = user ? getVisibleClients(user.id, user.role) : [];
+  const adminUsers = accounts.filter((account) => account.role === "admin" && (account.active ?? true));
 
   const filtered = visibleClients.filter((c) => {
     const matchSearch =
@@ -402,6 +402,7 @@ export default function ClientsPage() {
       {assignTarget && (
         <AssignAdminModal
           client={assignTarget}
+          admins={adminUsers}
           onClose={() => setAssignTarget(null)}
           onChanged={() => { setAccessVersion((v) => v + 1); setAssignTarget(null); }}
         />

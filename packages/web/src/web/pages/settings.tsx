@@ -266,22 +266,67 @@ function TeamTab() {
 }
 
 function SecurityTab() {
+  const { user, accounts, updatePassword, updateAccount } = useAuth();
+  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const canManageAccounts = user?.role === "superadmin";
+
+  const savePassword = () => {
+    setMessage(null);
+    if (form.next !== form.confirm) {
+      setMessage({ type: "error", text: "New passwords do not match." });
+      return;
+    }
+    const result = updatePassword(form.current, form.next);
+    if (!result.success) {
+      setMessage({ type: "error", text: result.error ?? "Could not update password." });
+      return;
+    }
+    setForm({ current: "", next: "", confirm: "" });
+    setMessage({ type: "success", text: "Password updated." });
+  };
+
   return (
     <div className="space-y-4">
       <Card>
         <SectionHeader title="Change Password" />
         <div className="space-y-3 max-w-md">
-          {["Current Password", "New Password", "Confirm New Password"].map((label) => (
-            <div key={label}>
-              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>{label}</label>
-              <DarkInput type="password" />
+          <PasswordInput label="Current Password" value={form.current} onChange={(current) => setForm({ ...form, current })} />
+          <PasswordInput label="New Password" value={form.next} onChange={(next) => setForm({ ...form, next })} />
+          <PasswordInput label="Confirm New Password" value={form.confirm} onChange={(confirm) => setForm({ ...form, confirm })} />
+          {message && (
+            <div className="px-3 py-2 rounded-xl text-xs font-semibold" style={{ backgroundColor: message.type === "success" ? "#0d2b1a" : "#2d0f0f", color: message.type === "success" ? "#4ade80" : "#f87171" }}>
+              {message.text}
             </div>
-          ))}
-          <button className="px-4 py-2 text-xs font-bold rounded-xl mt-2" style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}>
+          )}
+          <button onClick={savePassword} className="px-4 py-2 text-xs font-bold rounded-xl mt-2" style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}>
             Update Password
           </button>
         </div>
       </Card>
+      {canManageAccounts && (
+        <Card>
+          <SectionHeader title="Account Access" subtitle="Update emails, temporary passwords, roles, and active status for portal users." />
+          <div className="space-y-2">
+            {accounts.map((account) => (
+              <div key={account.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_120px_90px] gap-2 p-3 rounded-xl" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+                <input defaultValue={account.email} onBlur={(e) => updateAccount(account.id, { email: e.target.value })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
+                <input type="password" defaultValue={account.password} onBlur={(e) => updateAccount(account.id, { password: e.target.value })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
+                <select defaultValue={account.role} onChange={(e) => updateAccount(account.id, { role: e.target.value as typeof account.role })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base}>
+                  <option value="superadmin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="client">Client</option>
+                  <option value="team">Team</option>
+                  <option value="consultant">Consultant</option>
+                </select>
+                <button onClick={() => updateAccount(account.id, { active: !(account.active ?? true) })} className="px-3 py-2 text-[10px] font-bold rounded-xl" style={{ backgroundColor: (account.active ?? true) ? "#0d2b1a" : "#2d0f0f", color: (account.active ?? true) ? "#4ade80" : "#f87171" }}>
+                  {(account.active ?? true) ? "Active" : "Inactive"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       <Card>
         <SectionHeader title="Two-Factor Authentication" />
         <div className="flex items-center justify-between">
@@ -317,6 +362,23 @@ function SecurityTab() {
           </div>
         ))}
       </Card>
+    </div>
+  );
+}
+
+function PasswordInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div>
+      <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>{label}</label>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 text-sm rounded-xl focus:outline-none"
+        style={inputStyle.base}
+        onFocus={e => (e.currentTarget.style.borderColor = inputStyle.focus)}
+        onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")}
+      />
     </div>
   );
 }
