@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type Role = "superadmin" | "admin" | "client" | "team" | "consultant";
 
@@ -390,4 +390,6 @@ async function hydratePortalData() {
   })));
 }
 
-void hydratePortalData();
+if (isSupabaseConfigured) {
+  void hydratePortalData();
+}
