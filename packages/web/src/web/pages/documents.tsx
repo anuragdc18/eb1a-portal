@@ -27,6 +27,16 @@ const STATUS_STYLES: Record<EvidenceDoc["status"], { bg: string; color: string; 
 };
 
 const CATEGORIES = ["All", "Research Paper", "Digital PR", "Award Jury", "Leading Role", "Original Contribution", "Compensation", "Memberships", "Photos", "Other"];
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const ALLOWED_EXTENSIONS = new Set(["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]);
 
 function fileSize(size: number) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
@@ -58,6 +68,7 @@ export default function DocumentsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [clientName, setClientName] = useState(CLIENTS[0]?.name ?? "General");
   const [uploadedDocs, setUploadedDocs] = useState<EvidenceDoc[]>([]);
+  const [uploadError, setUploadError] = useState("");
 
   const allDocs = [...uploadedDocs, ...DOCUMENTS.map(normalizeDoc)];
   const filtered = allDocs.filter((d) => {
@@ -76,7 +87,26 @@ export default function DocumentsPage() {
   };
 
   function addFiles(files: FileList | File[]) {
-    const next = Array.from(files).map((file) => {
+    setUploadError("");
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const isAllowed = ALLOWED_MIME_TYPES.has(file.type) || ALLOWED_EXTENSIONS.has(extension);
+      if (!isAllowed) {
+        rejected.push(`${file.name}: file type not allowed`);
+        return;
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        rejected.push(`${file.name}: over 50MB`);
+        return;
+      }
+      accepted.push(file);
+    });
+
+    if (rejected.length) setUploadError(rejected.slice(0, 3).join(". "));
+    const next = accepted.map((file) => {
       const isImage = file.type.startsWith("image/");
       return {
         id: `upload-${Date.now()}-${file.name}`,
@@ -94,6 +124,7 @@ export default function DocumentsPage() {
         fileType: file.type,
       };
     });
+    if (!next.length) return;
     setUploadedDocs((prev) => [...next, ...prev]);
     if (next[0]) setSelectedDoc(next[0]);
   }
@@ -146,6 +177,7 @@ export default function DocumentsPage() {
         <Upload size={28} className="mx-auto mb-2" style={{ color: dragOver ? "#ffe500" : "#2a2a2a" }} />
         <p className="text-sm font-semibold" style={{ color: "#737373" }}>Drop files here to upload evidence</p>
         <p className="text-xs mt-1" style={{ color: "#4a4a4a" }}>PDF, DOCX, JPG, PNG, photos up to your browser limit</p>
+        {uploadError && <p className="text-xs mt-2" style={{ color: "#f87171" }}>{uploadError}</p>}
         <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
           <select value={clientName} onClick={(e) => e.stopPropagation()} onChange={(e) => setClientName(e.target.value)} style={selectStyle}>
             {CLIENTS.map((client) => <option key={client.id}>{client.name}</option>)}

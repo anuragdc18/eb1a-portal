@@ -51,6 +51,13 @@ function DashboardComponent({ onNavigate }: { onNavigate: (v: string) => void })
 }
 
 function PageRouter({ view, onNavigate }: { view: string; onNavigate: (v: string) => void }) {
+  const { user } = useAuth();
+  if (!user) return null;
+
+  if (view === "admin-access" && user.role !== "superadmin") {
+    return <DashboardComponent onNavigate={onNavigate} />;
+  }
+
   switch (view) {
     case "dashboard":     return <DashboardComponent onNavigate={onNavigate} />;
     case "clients":       return <ClientsPage />;

@@ -27,6 +27,9 @@ interface AuthContextType {
 }
 
 const STORAGE_KEY = "epros_auth_accounts_v1";
+const LOGIN_ATTEMPTS_KEY = "epros_login_attempts_v1";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
 
 const DEFAULT_ACCOUNTS: AuthAccount[] = [
   { id: "u1", role: "superadmin", name: "Alex Rivera", email: "super@epros.com", avatar: "AR", password: "demo1234", active: true },
@@ -63,6 +66,31 @@ function readAccounts(): AuthAccount[] {
   }
 }
 
+function readLoginAttempts(): Record<string, { count: number; lockedUntil: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveLoginAttempts(attempts: Record<string, { count: number; lockedUntil: number }>) {
+  localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+}
+
+function cleanEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function cleanAccount(account: AuthAccount): AuthAccount {
+  return {
+    ...account,
+    name: account.name.trim().slice(0, 80),
+    email: cleanEmail(account.email),
+    password: account.password.slice(0, 128),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<AuthAccount[]>(readAccounts);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -73,11 +101,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = cleanEmail(email);
+    const attempts = readLoginAttempts();
+    const attempt = attempts[normalizedEmail];
+    if (attempt?.lockedUntil && attempt.lockedUntil > Date.now()) {
+      return { success: false, error: "Too many failed attempts. Try again in a few minutes." };
+    }
+
     const account = accounts.find((item) => item.email.toLowerCase() === normalizedEmail);
-    if (!account) return { success: false, error: "No account found with this email." };
-    if (!account.active) return { success: false, error: "This account is inactive. Contact your super admin." };
-    if (account.password !== password) return { success: false, error: "Incorrect password." };
+    const fail = (error: string) => {
+      const nextCount = (attempt?.count ?? 0) + 1;
+      attempts[normalizedEmail] = {
+        count: nextCount,
+        lockedUntil: nextCount >= MAX_LOGIN_ATTEMPTS ? Date.now() + LOCKOUT_MS : 0,
+      };
+      saveLoginAttempts(attempts);
+      return { success: false, error };
+    };
+
+    if (!account) return fail("No account found with this email.");
+    if (!account.active) return fail("This account is inactive. Contact your super admin.");
+    if (account.password !== password) return fail("Incorrect password.");
+    delete attempts[normalizedEmail];
+    saveLoginAttempts(attempts);
     setUser(publicUser(account));
     return { success: true };
   };
@@ -90,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!account) return { success: false, error: "Account not found." };
     if (account.password !== currentPassword) return { success: false, error: "Current password is incorrect." };
     if (newPassword.length < 6) return { success: false, error: "Use at least 6 characters." };
-    saveAccounts(accounts.map((item) => item.id === user.id ? { ...item, password: newPassword } : item));
+    saveAccounts(accounts.map((item) => item.id === user.id ? cleanAccount({ ...item, password: newPassword }) : item));
     return { success: true };
   };
 
@@ -98,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const next = accounts.map((item) => {
       if (item.id !== id) return item;
       const merged = { ...item, ...updates };
-      return { ...merged, avatar: updates.name ? initials(updates.name) : merged.avatar };
+      return cleanAccount({ ...merged, avatar: updates.name ? initials(updates.name) : merged.avatar });
     });
     saveAccounts(next);
     const updatedSelf = next.find((item) => item.id === user?.id);
@@ -112,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatar: initials(account.name),
       active: account.active ?? true,
     };
-    saveAccounts([...accounts, newAccount]);
+    saveAccounts([...accounts, cleanAccount(newAccount)]);
   };
 
   const value = useMemo(

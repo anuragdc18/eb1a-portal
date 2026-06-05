@@ -25,6 +25,15 @@ const TOOLTIP_STYLE = {
 
 const CARD = { backgroundColor: "#111111", border: "1px solid #1f1f1f", borderRadius: 16, padding: 20 } as React.CSSProperties;
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default function ReportsPage() {
   const [period, setPeriod] = useState<"Weekly" | "Monthly">("Monthly");
   const [clientId, setClientId] = useState(CLIENTS[0]?.id ?? "");
@@ -38,11 +47,14 @@ export default function ReportsPage() {
     const reportTitle = `${period} EB1A Progress Report`;
     const generated = new Date().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
     const clientName = selectedClient?.name ?? "All Clients";
+    const safeClientName = escapeHtml(clientName);
+    const safeReportTitle = escapeHtml(reportTitle);
+    const safeGenerated = escapeHtml(generated);
     const html = `
       <!doctype html>
       <html>
         <head>
-          <title>${reportTitle}</title>
+          <title>${safeReportTitle}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #111; padding: 32px; line-height: 1.45; }
             h1 { margin: 0 0 4px; font-size: 26px; }
@@ -61,36 +73,36 @@ export default function ReportsPage() {
         </head>
         <body>
           <button onclick="window.print()" style="float:right;padding:10px 14px;font-weight:700">Save as PDF</button>
-          <h1>${reportTitle}</h1>
-          <div class="muted">${clientName} | Generated ${generated}</div>
+          <h1>${safeReportTitle}</h1>
+          <div class="muted">${safeClientName} | Generated ${safeGenerated}</div>
           <div class="grid">
             <div class="card"><div class="label">Profile Progress</div><div class="value">${selectedClient?.progress ?? 0}%</div></div>
             <div class="card"><div class="label">EB1A Score</div><div class="value">${selectedClient?.eb1aScore ?? 0}/100</div></div>
-            <div class="card"><div class="label">Payment Status</div><div class="value">${payment?.paymentStatus ?? "Unpaid"}</div></div>
+            <div class="card"><div class="label">Payment Status</div><div class="value">${escapeHtml(payment?.paymentStatus ?? "Unpaid")}</div></div>
             <div class="card"><div class="label">Due Left</div><div class="value">Rs. ${Math.round(payment?.dueAmount ?? 0).toLocaleString("en-IN")}</div></div>
           </div>
           <h2>Client Summary</h2>
           <table>
-            <tr><th>Name</th><td>${clientName}</td><th>Current Stage</th><td>${selectedClient?.currentStage ?? "N/A"}</td></tr>
-            <tr><th>Profession</th><td>${selectedClient?.profession ?? "N/A"}</td><th>Company</th><td>${selectedClient?.company ?? "N/A"}</td></tr>
-            <tr><th>Category</th><td>${selectedClient?.category ?? "N/A"}</td><th>Target Date</th><td>${selectedClient?.expectedCompletion ?? "N/A"}</td></tr>
+            <tr><th>Name</th><td>${safeClientName}</td><th>Current Stage</th><td>${escapeHtml(selectedClient?.currentStage ?? "N/A")}</td></tr>
+            <tr><th>Profession</th><td>${escapeHtml(selectedClient?.profession ?? "N/A")}</td><th>Company</th><td>${escapeHtml(selectedClient?.company ?? "N/A")}</td></tr>
+            <tr><th>Category</th><td>${escapeHtml(selectedClient?.category ?? "N/A")}</td><th>Target Date</th><td>${escapeHtml(selectedClient?.expectedCompletion ?? "N/A")}</td></tr>
           </table>
           <h2>EB1A Criteria Snapshot</h2>
           <table>
             <thead><tr><th>Criterion</th><th>Strength</th><th>Evidence</th><th>Review</th></tr></thead>
             <tbody>
-              ${CRITERIA.map((c) => `<tr><td>${c.name}</td><td><span class="pill">${c.strength}</span></td><td>${c.evidenceAvailable} available / ${c.evidencePending} pending</td><td>${c.attorneyStatus}</td></tr>`).join("")}
+              ${CRITERIA.map((c) => `<tr><td>${escapeHtml(c.name)}</td><td><span class="pill">${escapeHtml(c.strength)}</span></td><td>${c.evidenceAvailable} available / ${c.evidencePending} pending</td><td>${escapeHtml(c.attorneyStatus)}</td></tr>`).join("")}
             </tbody>
           </table>
           <h2>Completed Work</h2>
           <table>
             <thead><tr><th>Service</th><th>Task</th><th>Owner</th><th>Status</th></tr></thead>
-            <tbody>${completedTasks.slice(0, 12).map((t) => `<tr><td>${t.service}</td><td>${t.title}</td><td>${t.assignedTo}</td><td>${t.status}</td></tr>`).join("") || "<tr><td colspan='4'>No completed tasks recorded yet.</td></tr>"}</tbody>
+            <tbody>${completedTasks.slice(0, 12).map((t) => `<tr><td>${escapeHtml(t.service)}</td><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.assignedTo)}</td><td>${escapeHtml(t.status)}</td></tr>`).join("") || "<tr><td colspan='4'>No completed tasks recorded yet.</td></tr>"}</tbody>
           </table>
           <h2>Next Actions</h2>
           <table>
             <thead><tr><th>Priority</th><th>Task</th><th>Deadline</th><th>Status</th></tr></thead>
-            <tbody>${pendingTasks.slice(0, 12).map((t) => `<tr><td>${t.priority}</td><td>${t.title}</td><td>${t.deadline}</td><td>${t.status}</td></tr>`).join("") || "<tr><td colspan='4'>No pending tasks recorded.</td></tr>"}</tbody>
+            <tbody>${pendingTasks.slice(0, 12).map((t) => `<tr><td>${escapeHtml(t.priority)}</td><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.deadline)}</td><td>${escapeHtml(t.status)}</td></tr>`).join("") || "<tr><td colspan='4'>No pending tasks recorded.</td></tr>"}</tbody>
           </table>
         </body>
       </html>
