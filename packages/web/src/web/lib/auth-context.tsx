@@ -75,7 +75,11 @@ function readLoginAttempts(): Record<string, { count: number; lockedUntil: numbe
 }
 
 function saveLoginAttempts(attempts: Record<string, { count: number; lockedUntil: number }>) {
-  localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+  try {
+    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+  } catch {
+    // Storage can be blocked in some embedded/private browsers; login should still render.
+  }
 }
 
 function cleanEmail(email: string) {
@@ -97,7 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const saveAccounts = (next: AuthAccount[]) => {
     setAccounts(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Keep in-memory account edits working even when browser storage is unavailable.
+    }
   };
 
   const login = (email: string, password: string) => {
