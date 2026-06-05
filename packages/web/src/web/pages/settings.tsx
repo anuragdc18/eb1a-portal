@@ -271,13 +271,13 @@ function SecurityTab() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const canManageAccounts = user?.role === "superadmin";
 
-  const savePassword = () => {
+  const savePassword = async () => {
     setMessage(null);
     if (form.next !== form.confirm) {
       setMessage({ type: "error", text: "New passwords do not match." });
       return;
     }
-    const result = updatePassword(form.current, form.next);
+    const result = await updatePassword(form.current, form.next);
     if (!result.success) {
       setMessage({ type: "error", text: result.error ?? "Could not update password." });
       return;

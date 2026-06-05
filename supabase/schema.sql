@@ -131,6 +131,17 @@ create table if not exists public.portal_settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.portal_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  name text not null,
+  role text not null check (role in ('superadmin', 'admin', 'client', 'team', 'consultant')),
+  avatar text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.portal_clients enable row level security;
 alter table public.portal_admin_client_access enable row level security;
 alter table public.portal_tasks enable row level security;
@@ -150,6 +161,30 @@ alter table public.portal_podcasts enable row level security;
 alter table public.portal_books enable row level security;
 alter table public.portal_jury_work enable row level security;
 alter table public.portal_settings enable row level security;
+alter table public.portal_profiles enable row level security;
+
+drop policy if exists "portal profiles authenticated read" on public.portal_profiles;
+drop policy if exists "portal profiles own update" on public.portal_profiles;
+drop policy if exists "portal profiles superadmin manage" on public.portal_profiles;
+
+create policy "portal profiles authenticated read" on public.portal_profiles
+  for select to authenticated using (true);
+
+create policy "portal profiles own update" on public.portal_profiles
+  for update to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+create policy "portal profiles superadmin manage" on public.portal_profiles
+  for all to authenticated
+  using (exists (
+    select 1 from public.portal_profiles p
+    where p.id = auth.uid() and p.role = 'superadmin' and p.active = true
+  ))
+  with check (exists (
+    select 1 from public.portal_profiles p
+    where p.id = auth.uid() and p.role = 'superadmin' and p.active = true
+  ));
 
 drop policy if exists "portal anon read clients" on public.portal_clients;
 drop policy if exists "portal anon read access" on public.portal_admin_client_access;

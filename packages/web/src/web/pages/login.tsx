@@ -16,7 +16,7 @@ export default function LoginPage() {
     if (!password) { setError("Password is required."); return; }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.success) setError(result.error ?? "Login failed.");
     setLoading(false);
   };

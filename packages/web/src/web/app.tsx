@@ -94,7 +94,17 @@ function AppShell() {
 }
 
 function AuthGate() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0a0a0a", color: "#ffffff" }}>
+        <div className="rounded-2xl p-8 text-center" style={{ backgroundColor: "#111111", border: "1px solid #222222" }}>
+          <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center font-black" style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}>EB</div>
+          <p className="text-sm font-bold">Loading secure portal...</p>
+        </div>
+      </div>
+    );
+  }
   if (!user) return <LoginPage />;
   return <AppShell />;
 }

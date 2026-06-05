@@ -76,5 +76,21 @@ To create the portal tables:
 1. Open Supabase dashboard.
 2. Go to SQL Editor.
 3. Paste and run `supabase/schema.sql`.
+4. From this project folder, run `node scripts/seed-supabase-auth.mjs` to create/reset the default Supabase Auth users.
 
 The frontend reads portal records from Supabase tables such as `portal_clients`, `portal_tasks`, `portal_documents`, `portal_criteria`, and the service tracker tables. Each table stores records as `{ id, data }`, where `data` is JSON matching the portal UI shape.
+
+Default seeded Supabase Auth accounts:
+
+- `super@epros.com` / `demo1234`
+- `admin@epros.com` / `demo1234`
+- `admin2@epros.com` / `demo1234`
+- `client@epros.com` / `demo1234`
+- `team@epros.com` / `demo1234`
+- `consultant@epros.com` / `demo1234`
+
+For Vercel, set these environment variables on the project:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`

@@ -1,5 +1,7 @@
-import { createContext, useContext, useMemo, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import type { Role } from "./portal-data";
+import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type AppRole = Role | "admin";
 
@@ -19,11 +21,12 @@ export interface AuthAccount extends AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   accounts: AuthAccount[];
-  login: (email: string, password: string) => { success: boolean; error?: string };
-  logout: () => void;
-  updatePassword: (currentPassword: string, newPassword: string) => { success: boolean; error?: string };
-  updateAccount: (id: string, updates: Partial<AuthAccount>) => void;
-  createAccount: (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  updateAccount: (id: string, updates: Partial<AuthAccount>) => Promise<void>;
+  createAccount: (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => Promise<void>;
 }
 
 const STORAGE_KEY = "epros_auth_accounts_v1";
@@ -53,6 +56,20 @@ function initials(name: string) {
 function publicUser(account: AuthAccount): AuthUser {
   const { password: _password, ...user } = account;
   return user;
+}
+
+function userFromSupabase(authUser: User, profile?: Partial<AuthAccount>): AuthUser {
+  const meta = authUser.user_metadata ?? {};
+  const name = profile?.name ?? meta.name ?? authUser.email?.split("@")[0] ?? "Portal User";
+  const role = (profile?.role ?? meta.role ?? "client") as AppRole;
+  return {
+    id: authUser.id,
+    role,
+    name,
+    email: profile?.email ?? authUser.email ?? "",
+    avatar: profile?.avatar ?? initials(name),
+    active: profile?.active ?? true,
+  };
 }
 
 function readAccounts(): AuthAccount[] {
@@ -98,6 +115,59 @@ function cleanAccount(account: AuthAccount): AuthAccount {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<AuthAccount[]>(readAccounts);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+
+  const loadAccounts = async () => {
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase.from("portal_profiles").select("*").order("name", { ascending: true });
+    if (error || !data?.length) {
+      setAccounts(DEFAULT_ACCOUNTS.map((account) => ({ ...account, password: "" })));
+      return;
+    }
+    setAccounts(data.map((profile: any) => ({
+      id: profile.id,
+      role: profile.role,
+      name: profile.name,
+      email: profile.email,
+      avatar: profile.avatar ?? initials(profile.name),
+      active: profile.active ?? true,
+      password: "",
+    })));
+  };
+
+  const loadProfile = async (authUser: User | null) => {
+    if (!authUser) {
+      setUser(null);
+      return;
+    }
+    const { data } = await supabase.from("portal_profiles").select("*").eq("id", authUser.id).maybeSingle();
+    setUser(userFromSupabase(authUser, data ?? undefined));
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!mounted) return;
+      await loadProfile(data.user);
+      await loadAccounts();
+      setLoading(false);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadProfile(session?.user ?? null);
+      void loadAccounts();
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const saveAccounts = (next: AuthAccount[]) => {
     setAccounts(next);
@@ -108,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     const normalizedEmail = cleanEmail(email);
     const attempts = readLoginAttempts();
     const attempt = attempts[normalizedEmail];
@@ -116,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Too many failed attempts. Try again in a few minutes." };
     }
 
-    const account = accounts.find((item) => item.email.toLowerCase() === normalizedEmail);
     const fail = (error: string) => {
       const nextCount = (attempt?.count ?? 0) + 1;
       attempts[normalizedEmail] = {
@@ -127,6 +196,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error };
     };
 
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (error || !data.user) return fail(error?.message ?? "Login failed.");
+      await loadProfile(data.user);
+      await loadAccounts();
+      delete attempts[normalizedEmail];
+      saveLoginAttempts(attempts);
+      return { success: true };
+    }
+
+    const account = accounts.find((item) => item.email.toLowerCase() === normalizedEmail);
     if (!account) return fail("No account found with this email.");
     if (!account.active) return fail("This account is inactive. Contact your super admin.");
     if (account.password !== password) return fail("Incorrect password.");
@@ -136,10 +216,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const logout = () => setUser(null);
+  const logout = async () => {
+    if (isSupabaseConfigured) await supabase.auth.signOut();
+    setUser(null);
+  };
 
-  const updatePassword = (currentPassword: string, newPassword: string) => {
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
     if (!user) return { success: false, error: "You are not signed in." };
+    if (newPassword.length < 6) return { success: false, error: "Use at least 6 characters." };
+
+    if (isSupabaseConfigured) {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+      if (verifyError) return { success: false, error: "Current password is incorrect." };
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    }
+
     const account = accounts.find((item) => item.id === user.id);
     if (!account) return { success: false, error: "Account not found." };
     if (account.password !== currentPassword) return { success: false, error: "Current password is incorrect." };
@@ -148,7 +241,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const updateAccount = (id: string, updates: Partial<AuthAccount>) => {
+  const updateAccount = async (id: string, updates: Partial<AuthAccount>) => {
+    if (isSupabaseConfigured) {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const response = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ action: "update", id, updates }),
+      });
+      if (!response.ok) {
+        const profileUpdates = {
+          role: updates.role,
+          name: updates.name,
+          email: updates.email,
+          avatar: updates.name ? initials(updates.name) : updates.avatar,
+          active: updates.active,
+        };
+        await supabase.from("portal_profiles").update(profileUpdates).eq("id", id);
+      }
+      await loadAccounts();
+      const current = (await supabase.auth.getUser()).data.user;
+      await loadProfile(current);
+      return;
+    }
+
     const next = accounts.map((item) => {
       if (item.id !== id) return item;
       const merged = { ...item, ...updates };
@@ -159,7 +275,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updatedSelf) setUser(publicUser(updatedSelf));
   };
 
-  const createAccount = (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => {
+  const createAccount = async (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => {
+    if (isSupabaseConfigured) {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const response = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ action: "create", account }),
+      });
+      if (!response.ok) throw new Error("Could not create Supabase Auth account.");
+      await loadAccounts();
+      return;
+    }
+
     const newAccount: AuthAccount = {
       ...account,
       id: `u${Date.now()}`,
@@ -170,8 +298,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({ user, accounts, login, logout, updatePassword, updateAccount, createAccount }),
-    [user, accounts]
+    () => ({ user, accounts, loading, login, logout, updatePassword, updateAccount, createAccount }),
+    [user, accounts, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
