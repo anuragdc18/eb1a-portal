@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../lib/auth-context";
 
-const TABS = ["Profile", "Notifications", "Team", "Security", "Billing"];
+const TABS = ["Profile", "Notifications", "Team", "Security"];
 
 const inputStyle = {
   base: { backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#f5f5f5" } as React.CSSProperties,
@@ -383,52 +383,6 @@ function PasswordInput({ label, value, onChange }: { label: string; value: strin
   );
 }
 
-function BillingTab() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, #1a1400 0%, #0a0a0a 100%)", border: "1px solid #2a2000" }}>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold" style={{ color: "#ffe500" }}>Current Plan</p>
-            <h3 className="text-2xl font-black mt-1" style={{ color: "#ffffff" }}>Professional</h3>
-            <p className="text-xs mt-1" style={{ color: "#737373" }}>Up to 50 clients · 5 team members · All features</p>
-          </div>
-          <div className="text-right">
-            <p className="text-3xl font-black" style={{ color: "#ffe500" }}>$149</p>
-            <p className="text-xs" style={{ color: "#737373" }}>/month</p>
-          </div>
-        </div>
-        <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid #2a2000" }}>
-          <p className="text-xs" style={{ color: "#737373" }}>Next billing: Jan 15, 2026</p>
-          <button className="px-3 py-1.5 text-xs font-semibold rounded-xl" style={{ backgroundColor: "#1a1400", color: "#ffe500", border: "1px solid #2a2000" }}>
-            Manage Plan
-          </button>
-        </div>
-      </div>
-      <Card>
-        <SectionHeader title="Billing History" />
-        {[
-          { date: "Dec 15, 2025", amount: "$149.00" },
-          { date: "Nov 15, 2025", amount: "$149.00" },
-          { date: "Oct 15, 2025", amount: "$149.00" },
-        ].map((inv, i) => (
-          <div key={i} className="flex items-center justify-between py-3" style={{ borderBottom: i < 2 ? "1px solid #1a1a1a" : "none" }}>
-            <div>
-              <p className="text-xs font-semibold" style={{ color: "#d4d4d4" }}>{inv.date}</p>
-              <p className="text-[10px]" style={{ color: "#737373" }}>Professional Plan</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold" style={{ color: "#ffffff" }}>{inv.amount}</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#0d2b1a", color: "#4ade80" }}>Paid</span>
-              <button className="text-[10px] font-semibold" style={{ color: "#ffe500" }}>PDF</button>
-            </div>
-          </div>
-        ))}
-      </Card>
-    </div>
-  );
-}
-
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("Profile");
 
@@ -458,7 +412,6 @@ export default function SettingsPage() {
         {activeTab === "Notifications" && <NotificationsTab />}
         {activeTab === "Team" && <TeamTab />}
         {activeTab === "Security" && <SecurityTab />}
-        {activeTab === "Billing" && <BillingTab />}
       </div>
     </div>
   );

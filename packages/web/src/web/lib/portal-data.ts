@@ -22,6 +22,7 @@ export type Status =
 
 export type Priority = "Low" | "Medium" | "High";
 export type Strength = "Weak" | "Moderate" | "Strong";
+export type PaymentStatus = "Unpaid" | "Partial" | "Paid";
 
 export const STATUS_COLORS: Record<Status, string> = {
   "Not Started": "bg-gray-100 text-gray-600",
@@ -68,6 +69,11 @@ export interface Client {
   status: "Active" | "Completed" | "Delayed" | "On Hold";
   avatar: string;
   ownerId: string;
+  paymentStatus?: PaymentStatus;
+  totalAmount?: number;
+  amountPaid?: number;
+  dueAmount?: number;
+  paymentRemarks?: string;
 }
 
 export interface AdminClientAccess {
@@ -270,6 +276,46 @@ export function toggleAdminClientAccess(adminId: string, clientId: string): void
     ADMIN_CLIENT_ACCESS = [...ADMIN_CLIENT_ACCESS, access];
     void supabase.from("portal_admin_client_access").upsert({ id: `${adminId}:${clientId}`, data: access });
   }
+}
+
+export function getClientPayment(client: Client) {
+  const totalAmount = client.totalAmount ?? 0;
+  const amountPaid = client.amountPaid ?? 0;
+  const dueAmount = Math.max(totalAmount - amountPaid, client.dueAmount ?? 0);
+  const paymentStatus: PaymentStatus =
+    client.paymentStatus ?? (totalAmount > 0 && dueAmount <= 0 ? "Paid" : amountPaid > 0 ? "Partial" : "Unpaid");
+
+  return {
+    paymentStatus,
+    totalAmount,
+    amountPaid,
+    dueAmount,
+    paymentRemarks: client.paymentRemarks ?? "",
+  };
+}
+
+export function updateClientPayment(
+  clientId: string,
+  payment: { paymentStatus: PaymentStatus; totalAmount: number; amountPaid: number; paymentRemarks?: string }
+): Client | undefined {
+  const client = CLIENTS.find((item) => item.id === clientId);
+  if (!client) return undefined;
+
+  const totalAmount = Math.max(0, payment.totalAmount || 0);
+  const amountPaid = Math.max(0, payment.amountPaid || 0);
+  const dueAmount = Math.max(totalAmount - amountPaid, 0);
+  const next: Client = {
+    ...client,
+    paymentStatus: payment.paymentStatus,
+    totalAmount,
+    amountPaid,
+    dueAmount,
+    paymentRemarks: payment.paymentRemarks ?? "",
+  };
+
+  Object.assign(client, next);
+  void supabase.from("portal_clients").upsert({ id: clientId, data: next });
+  return client;
 }
 
 async function hydratePortalData() {

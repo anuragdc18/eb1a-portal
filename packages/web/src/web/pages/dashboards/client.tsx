@@ -1,9 +1,9 @@
-import { CheckCircle, Clock, FileText, ExternalLink, TrendingUp, AlertTriangle } from "lucide-react";
+import { CheckCircle, Clock, FileText, ExternalLink, TrendingUp, AlertTriangle, CreditCard } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge } from "../../components/ui/badge";
 import { CircularProgress, ProgressBar } from "../../components/ui/progress";
-import { CLIENTS, CRITERIA, TASKS, MONTHLY_ACTIVITY } from "../../lib/portal-data";
+import { CLIENTS, CRITERIA, TASKS, MONTHLY_ACTIVITY, getClientPayment, type PaymentStatus } from "../../lib/portal-data";
 
 const SERVICE_COMPLETION = [
   { name: "Digital PR", value: 65 },
@@ -35,6 +35,16 @@ const PUBLISHED_LINKS = [
   { title: "LinkedIn Profile", url: "https://linkedin.com", date: "Ongoing", type: "LinkedIn" },
 ];
 
+const PAYMENT_ACCENT: Record<PaymentStatus, { bg: string; color: string }> = {
+  Paid: { bg: "#0d2b1a", color: "#4ade80" },
+  Partial: { bg: "#1f1400", color: "#fbbf24" },
+  Unpaid: { bg: "#2d0f0f", color: "#f87171" },
+};
+
+function formatMoney(value = 0) {
+  return `Rs. ${Math.round(value).toLocaleString("en-IN")}`;
+}
+
 const TOOLTIP = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -50,6 +60,7 @@ const TOOLTIP = ({ active, payload, label }: any) => {
 export default function ClientDashboard({ onNavigate }: { onNavigate?: (v: string) => void }) {
   const CLIENT = CLIENTS[0];
   const myTasks = CLIENT ? TASKS.filter((t) => t.clientId === CLIENT.id) : [];
+  const payment = CLIENT ? getClientPayment(CLIENT) : null;
 
   if (!CLIENT) {
     return (
@@ -126,6 +137,39 @@ export default function ClientDashboard({ onNavigate }: { onNavigate?: (v: strin
           change={{ value: "2 urgent", positive: false }}
         />
       </div>
+
+      {payment && (
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold flex items-center gap-2" style={{ color: "#ffffff" }}>
+                <CreditCard size={16} style={{ color: "#ffe500" }} /> Payment Status
+              </h3>
+              <p className="text-xs mt-0.5" style={{ color: "#737373" }}>Office payment record for your EB1A profile service.</p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: PAYMENT_ACCENT[payment.paymentStatus].bg, color: PAYMENT_ACCENT[payment.paymentStatus].color }}>
+              {payment.paymentStatus}
+            </span>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl p-3" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+                <p className="text-[10px] uppercase font-semibold" style={{ color: "#737373" }}>Total Amount</p>
+                <p className="text-lg font-black mt-1" style={{ color: "#ffffff" }}>{formatMoney(payment.totalAmount)}</p>
+              </div>
+              <div className="rounded-xl p-3" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+                <p className="text-[10px] uppercase font-semibold" style={{ color: "#737373" }}>Paid</p>
+                <p className="text-lg font-black mt-1" style={{ color: "#4ade80" }}>{formatMoney(payment.amountPaid)}</p>
+              </div>
+              <div className="rounded-xl p-3" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+                <p className="text-[10px] uppercase font-semibold" style={{ color: "#737373" }}>Due Left</p>
+                <p className="text-lg font-black mt-1" style={{ color: payment.dueAmount > 0 ? "#f87171" : "#4ade80" }}>{formatMoney(payment.dueAmount)}</p>
+              </div>
+            </div>
+            {payment.paymentRemarks && <p className="text-xs mt-3" style={{ color: "#737373" }}>{payment.paymentRemarks}</p>}
+          </CardBody>
+        </Card>
+      )}
 
       {/* Charts + services */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

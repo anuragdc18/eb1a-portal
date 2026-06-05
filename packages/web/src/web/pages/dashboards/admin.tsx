@@ -8,13 +8,23 @@ import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge, PriorityBadge } from "../../components/ui/badge";
 import { ProgressBar, CircularProgress } from "../../components/ui/progress";
 import { Avatar } from "../../components/ui/avatar";
-import { getVisibleClients, TASKS, TEAM_MEMBERS, MONTHLY_ACTIVITY, SERVICE_PROGRESS } from "../../lib/portal-data";
+import { getVisibleClients, TASKS, TEAM_MEMBERS, MONTHLY_ACTIVITY, SERVICE_PROGRESS, getClientPayment, type PaymentStatus } from "../../lib/portal-data";
 import { useAuth } from "../../lib/auth-context";
 
 const RADAR_DATA = [
   { subject: "PR", A: 85 }, { subject: "LinkedIn", A: 72 }, { subject: "Awards", A: 58 },
   { subject: "Research", A: 90 }, { subject: "Memberships", A: 78 }, { subject: "Webinars", A: 65 },
 ];
+
+const PAYMENT_ACCENT: Record<PaymentStatus, { bg: string; color: string }> = {
+  Paid: { bg: "#0d2b1a", color: "#4ade80" },
+  Partial: { bg: "#1f1400", color: "#fbbf24" },
+  Unpaid: { bg: "#2d0f0f", color: "#f87171" },
+};
+
+function formatMoney(value = 0) {
+  return `Rs. ${Math.round(value).toLocaleString("en-IN")}`;
+}
 
 const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -176,7 +186,7 @@ export default function AdminDashboard({ onNavigate }: { onNavigate?: (v: string
             <table className="w-full text-sm min-w-[500px]">
               <thead>
                 <tr style={{ borderBottom: "1px solid #1f1f1f" }}>
-                  {["Client", "Stage", "Priority", "EB1A Score", "Progress"].map((h) => (
+                  {["Client", "Stage", "Priority", "Payment", "EB1A Score", "Progress"].map((h) => (
                     <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-widest px-5 py-2.5" style={{ color: "#737373" }}>
                       {h}
                     </th>
@@ -184,7 +194,9 @@ export default function AdminDashboard({ onNavigate }: { onNavigate?: (v: string
                 </tr>
               </thead>
               <tbody>
-                {clients.map((c) => (
+                {clients.map((c) => {
+                  const payment = getClientPayment(c);
+                  return (
                   <tr
                     key={c.id}
                     className="cursor-pointer transition-colors"
@@ -205,6 +217,11 @@ export default function AdminDashboard({ onNavigate }: { onNavigate?: (v: string
                     <td className="px-3 py-3 text-xs" style={{ color: "#a3a3a3" }}>{c.currentStage}</td>
                     <td className="px-3 py-3"><PriorityBadge priority={c.priority} /></td>
                     <td className="px-3 py-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ backgroundColor: PAYMENT_ACCENT[payment.paymentStatus].bg, color: PAYMENT_ACCENT[payment.paymentStatus].color }}>
+                        {payment.paymentStatus} / {formatMoney(payment.dueAmount)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5">
                         <Star size={11} style={{ color: c.eb1aScore >= 80 ? "#4ade80" : c.eb1aScore >= 60 ? "#fbbf24" : "#f87171" }} fill="currentColor" />
                         <span className="font-bold text-xs" style={{ color: "#ffffff" }}>{c.eb1aScore}</span>
@@ -218,7 +235,8 @@ export default function AdminDashboard({ onNavigate }: { onNavigate?: (v: string
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </CardBody>

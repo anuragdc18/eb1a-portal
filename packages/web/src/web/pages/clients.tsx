@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Search, Phone, Mail, MapPin, Calendar, User, Filter, UserCog, Lock, X, ChevronDown } from "lucide-react";
+import { Search, Phone, Mail, MapPin, Calendar, User, Filter, UserCog, Lock, X, CreditCard } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../components/ui/card";
 import { StatusBadge, PriorityBadge } from "../components/ui/badge";
 import { ProgressBar, CircularProgress } from "../components/ui/progress";
 import { Avatar } from "../components/ui/avatar";
-import { getVisibleClients, CLIENTS, toggleAdminClientAccess, ADMIN_CLIENT_ACCESS, type Client } from "../lib/portal-data";
+import { getVisibleClients, CLIENTS, toggleAdminClientAccess, ADMIN_CLIENT_ACCESS, getClientPayment, updateClientPayment, type Client, type PaymentStatus } from "../lib/portal-data";
 import { useAuth, type AuthAccount } from "../lib/auth-context";
 
 const STATUS_ACCENT: Record<string, { bg: string; color: string }> = {
@@ -13,6 +13,16 @@ const STATUS_ACCENT: Record<string, { bg: string; color: string }> = {
   Delayed:    { bg: "#2d0f0f", color: "#f87171" },
   "On Hold":  { bg: "#1a1a1a", color: "#737373" },
 };
+
+const PAYMENT_ACCENT: Record<PaymentStatus, { bg: string; color: string }> = {
+  Paid: { bg: "#0d2b1a", color: "#4ade80" },
+  Partial: { bg: "#1f1400", color: "#fbbf24" },
+  Unpaid: { bg: "#2d0f0f", color: "#f87171" },
+};
+
+function formatMoney(value = 0) {
+  return `Rs. ${Math.round(value).toLocaleString("en-IN")}`;
+}
 
 // ── Add Client Modal ────────────────────────────────────────
 function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClose: () => void; onAdded: () => void }) {
@@ -240,7 +250,72 @@ function AssignAdminModal({
   );
 }
 
-function ClientDrawer({ client, onClose }: { client: Client; onClose: () => void }) {
+function PaymentEditor({ client, canEdit, onSaved }: { client: Client; canEdit: boolean; onSaved: (client: Client) => void }) {
+  const payment = getClientPayment(client);
+  const [draft, setDraft] = useState({
+    paymentStatus: payment.paymentStatus,
+    totalAmount: payment.totalAmount,
+    amountPaid: payment.amountPaid,
+    paymentRemarks: payment.paymentRemarks,
+  });
+  const dueAmount = Math.max((Number(draft.totalAmount) || 0) - (Number(draft.amountPaid) || 0), 0);
+  const accent = PAYMENT_ACCENT[draft.paymentStatus];
+
+  const save = () => {
+    const updated = updateClientPayment(client.id, {
+      paymentStatus: draft.paymentStatus,
+      totalAmount: Number(draft.totalAmount) || 0,
+      amountPaid: Number(draft.amountPaid) || 0,
+      paymentRemarks: draft.paymentRemarks,
+    });
+    if (updated) onSaved({ ...updated });
+  };
+
+  if (!canEdit) {
+    return (
+      <div className="rounded-xl p-4" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold" style={{ color: "#ffffff" }}>Payment Status</p>
+          <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ backgroundColor: accent.bg, color: accent.color }}>
+            {payment.paymentStatus}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div><p className="text-[10px]" style={{ color: "#737373" }}>Total</p><p className="text-xs font-bold" style={{ color: "#ffffff" }}>{formatMoney(payment.totalAmount)}</p></div>
+          <div><p className="text-[10px]" style={{ color: "#737373" }}>Paid</p><p className="text-xs font-bold" style={{ color: "#4ade80" }}>{formatMoney(payment.amountPaid)}</p></div>
+          <div><p className="text-[10px]" style={{ color: "#737373" }}>Due</p><p className="text-xs font-bold" style={{ color: payment.dueAmount > 0 ? "#f87171" : "#4ade80" }}>{formatMoney(payment.dueAmount)}</p></div>
+        </div>
+        {payment.paymentRemarks && <p className="text-[10px] mt-3" style={{ color: "#737373" }}>{payment.paymentRemarks}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold" style={{ color: "#ffffff" }}>Payment Status</p>
+        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ backgroundColor: accent.bg, color: accent.color }}>
+          Due: {formatMoney(dueAmount)}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <select value={draft.paymentStatus} onChange={(e) => setDraft({ ...draft, paymentStatus: e.target.value as PaymentStatus })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={{ backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ffffff" }}>
+          <option value="Unpaid">Unpaid</option>
+          <option value="Partial">Partial</option>
+          <option value="Paid">Paid</option>
+        </select>
+        <input type="number" value={draft.totalAmount} onChange={(e) => setDraft({ ...draft, totalAmount: Number(e.target.value) })} placeholder="Total fee" className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={{ backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ffffff" }} />
+        <input type="number" value={draft.amountPaid} onChange={(e) => setDraft({ ...draft, amountPaid: Number(e.target.value) })} placeholder="Amount paid" className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={{ backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ffffff" }} />
+      </div>
+      <textarea value={draft.paymentRemarks} onChange={(e) => setDraft({ ...draft, paymentRemarks: e.target.value })} placeholder="Office payment note" rows={2} className="w-full px-3 py-2 text-xs rounded-xl focus:outline-none resize-none" style={{ backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ffffff" }} />
+      <button onClick={save} className="px-4 py-2 text-xs font-bold rounded-xl" style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}>
+        Save Payment
+      </button>
+    </div>
+  );
+}
+
+function ClientDrawer({ client, canManagePayment, onClientChanged, onClose }: { client: Client; canManagePayment: boolean; onClientChanged: (client: Client) => void; onClose: () => void }) {
   const [tab, setTab] = useState("overview");
   const TABS = ["overview", "services", "documents", "notes"];
 
@@ -328,6 +403,7 @@ function ClientDrawer({ client, onClose }: { client: Client; onClose: () => void
                 <StatusBadge status="In Progress" />
                 <span className="text-xs" style={{ color: "#a3a3a3" }}>{client.currentStage}</span>
               </div>
+              <PaymentEditor client={client} canEdit={canManagePayment} onSaved={onClientChanged} />
             </div>
           )}
           {tab === "services" && (
@@ -398,7 +474,7 @@ export default function ClientsPage() {
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto flex-1" style={{ backgroundColor: "#0a0a0a" }}>
-      {selected && <ClientDrawer client={selected} onClose={() => setSelected(null)} />}
+      {selected && <ClientDrawer client={selected} canManagePayment={canAddClient} onClientChanged={(updated) => { setSelected(updated); setAccessVersion((v) => v + 1); }} onClose={() => setSelected(null)} />}
       {assignTarget && (
         <AssignAdminModal
           client={assignTarget}
@@ -474,6 +550,8 @@ export default function ClientsPage() {
         {filtered.map((client) => {
           const sc = STATUS_ACCENT[client.status] ?? { bg: "#1a1a1a", color: "#737373" };
           const isPrivate = client.ownerId === "superadmin";
+          const payment = getClientPayment(client);
+          const paymentAccent = PAYMENT_ACCENT[payment.paymentStatus];
           return (
             <div
               key={client.id}
@@ -527,6 +605,12 @@ export default function ClientsPage() {
                 <PriorityBadge priority={client.priority} />
                 <span className="text-[10px]" style={{ color: "#737373" }}>
                   EB1A: <span className="font-bold" style={{ color: "#ffffff" }}>{client.eb1aScore}</span>/100
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid #1a1a1a" }}>
+                <span className="text-[10px] flex items-center gap-1" style={{ color: "#737373" }}><CreditCard size={11} /> Payment</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: paymentAccent.bg, color: paymentAccent.color }}>
+                  {payment.paymentStatus} / Due {formatMoney(payment.dueAmount)}
                 </span>
               </div>
 
