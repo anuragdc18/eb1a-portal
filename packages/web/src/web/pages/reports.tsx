@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Download, FileBarChart, Calendar } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ProgressBar, CircularProgress } from "../components/ui/progress";
-import { MONTHLY_ACTIVITY } from "../lib/portal-data";
+import { CLIENTS, CRITERIA, TASKS, MONTHLY_ACTIVITY, getClientPayment } from "../lib/portal-data";
 
 const PROGRESS_DATA = [
   { month: "Jan", score: 25 }, { month: "Feb", score: 32 }, { month: "Mar", score: 41 },
@@ -25,9 +26,85 @@ const TOOLTIP_STYLE = {
 const CARD = { backgroundColor: "#111111", border: "1px solid #1f1f1f", borderRadius: 16, padding: 20 } as React.CSSProperties;
 
 export default function ReportsPage() {
+  const [period, setPeriod] = useState<"Weekly" | "Monthly">("Monthly");
+  const [clientId, setClientId] = useState(CLIENTS[0]?.id ?? "");
+  const selectedClient = CLIENTS.find((client) => client.id === clientId) ?? CLIENTS[0];
+  const payment = selectedClient ? getClientPayment(selectedClient) : null;
+  const clientTasks = selectedClient ? TASKS.filter((task) => task.clientId === selectedClient.id) : TASKS;
+  const completedTasks = clientTasks.filter((task) => task.status === "Completed");
+  const pendingTasks = clientTasks.filter((task) => task.status !== "Completed");
+
+  function generatePdfReport() {
+    const reportTitle = `${period} EB1A Progress Report`;
+    const generated = new Date().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+    const clientName = selectedClient?.name ?? "All Clients";
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <title>${reportTitle}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #111; padding: 32px; line-height: 1.45; }
+            h1 { margin: 0 0 4px; font-size: 26px; }
+            h2 { margin-top: 28px; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+            .muted { color: #666; font-size: 12px; }
+            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+            .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+            .label { font-size: 11px; color: #666; text-transform: uppercase; }
+            .value { font-size: 22px; font-weight: 800; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border-bottom: 1px solid #eee; text-align: left; padding: 9px; font-size: 12px; }
+            th { background: #f6f6f6; text-transform: uppercase; font-size: 10px; color: #555; }
+            .pill { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #fff5b0; font-size: 11px; font-weight: 700; }
+            @media print { button { display: none; } body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <button onclick="window.print()" style="float:right;padding:10px 14px;font-weight:700">Save as PDF</button>
+          <h1>${reportTitle}</h1>
+          <div class="muted">${clientName} | Generated ${generated}</div>
+          <div class="grid">
+            <div class="card"><div class="label">Profile Progress</div><div class="value">${selectedClient?.progress ?? 0}%</div></div>
+            <div class="card"><div class="label">EB1A Score</div><div class="value">${selectedClient?.eb1aScore ?? 0}/100</div></div>
+            <div class="card"><div class="label">Payment Status</div><div class="value">${payment?.paymentStatus ?? "Unpaid"}</div></div>
+            <div class="card"><div class="label">Due Left</div><div class="value">Rs. ${Math.round(payment?.dueAmount ?? 0).toLocaleString("en-IN")}</div></div>
+          </div>
+          <h2>Client Summary</h2>
+          <table>
+            <tr><th>Name</th><td>${clientName}</td><th>Current Stage</th><td>${selectedClient?.currentStage ?? "N/A"}</td></tr>
+            <tr><th>Profession</th><td>${selectedClient?.profession ?? "N/A"}</td><th>Company</th><td>${selectedClient?.company ?? "N/A"}</td></tr>
+            <tr><th>Category</th><td>${selectedClient?.category ?? "N/A"}</td><th>Target Date</th><td>${selectedClient?.expectedCompletion ?? "N/A"}</td></tr>
+          </table>
+          <h2>EB1A Criteria Snapshot</h2>
+          <table>
+            <thead><tr><th>Criterion</th><th>Strength</th><th>Evidence</th><th>Review</th></tr></thead>
+            <tbody>
+              ${CRITERIA.map((c) => `<tr><td>${c.name}</td><td><span class="pill">${c.strength}</span></td><td>${c.evidenceAvailable} available / ${c.evidencePending} pending</td><td>${c.attorneyStatus}</td></tr>`).join("")}
+            </tbody>
+          </table>
+          <h2>Completed Work</h2>
+          <table>
+            <thead><tr><th>Service</th><th>Task</th><th>Owner</th><th>Status</th></tr></thead>
+            <tbody>${completedTasks.slice(0, 12).map((t) => `<tr><td>${t.service}</td><td>${t.title}</td><td>${t.assignedTo}</td><td>${t.status}</td></tr>`).join("") || "<tr><td colspan='4'>No completed tasks recorded yet.</td></tr>"}</tbody>
+          </table>
+          <h2>Next Actions</h2>
+          <table>
+            <thead><tr><th>Priority</th><th>Task</th><th>Deadline</th><th>Status</th></tr></thead>
+            <tbody>${pendingTasks.slice(0, 12).map((t) => `<tr><td>${t.priority}</td><td>${t.title}</td><td>${t.deadline}</td><td>${t.status}</td></tr>`).join("") || "<tr><td colspan='4'>No pending tasks recorded.</td></tr>"}</tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const reportWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!reportWindow) return;
+    reportWindow.document.write(html);
+    reportWindow.document.close();
+    reportWindow.focus();
+    setTimeout(() => reportWindow.print(), 400);
+  }
+
   return (
     <div className="p-6 space-y-5 overflow-y-auto flex-1" style={{ backgroundColor: "#0a0a0a" }}>
-      {/* Header banner */}
       <div
         className="rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
         style={{ background: "linear-gradient(135deg, #1a1400 0%, #0a0a0a 100%)", border: "1px solid #2a2000" }}
@@ -35,30 +112,41 @@ export default function ReportsPage() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <FileBarChart size={20} style={{ color: "#ffe500" }} />
-            <h2 className="text-lg font-black" style={{ color: "#ffffff" }}>Monthly Progress Report</h2>
+            <h2 className="text-lg font-black" style={{ color: "#ffffff" }}>{period} Progress Report</h2>
           </div>
-          <p className="text-sm" style={{ color: "#737373" }}>June 2025 — Dr. Arjun Mehta · EB1A Profile Building</p>
+          <p className="text-sm" style={{ color: "#737373" }}>
+            {selectedClient?.name ?? "Select a client"} - EB1A Profile Building
+          </p>
           <div className="flex items-center gap-2 mt-3">
             <span className="px-3 py-1 text-xs font-semibold flex items-center gap-1 rounded-full" style={{ backgroundColor: "#1a1400", color: "#ffe500", border: "1px solid #2a2000" }}>
-              <Calendar size={11} /> Generated: Jul 1, 2025
+              <Calendar size={11} /> Ready to generate
             </span>
           </div>
         </div>
-        <button
-          className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl"
-          style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}
-        >
-          <Download size={16} /> Download PDF
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select value={period} onChange={(e) => setPeriod(e.target.value as "Weekly" | "Monthly")} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={{ backgroundColor: "#0d0d0d", border: "1px solid #2a2000", color: "#ffffff" }}>
+            <option>Weekly</option>
+            <option>Monthly</option>
+          </select>
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="px-3 py-2 text-xs rounded-xl focus:outline-none min-w-48" style={{ backgroundColor: "#0d0d0d", border: "1px solid #2a2000", color: "#ffffff" }}>
+            {CLIENTS.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+          </select>
+          <button
+            onClick={generatePdfReport}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl"
+            style={{ backgroundColor: "#ffe500", color: "#0a0a0a" }}
+          >
+            <Download size={16} /> Generate PDF
+          </button>
+        </div>
       </div>
 
-      {/* KPIs + trend */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div style={CARD}>
           <h3 className="text-sm font-bold mb-4" style={{ color: "#ffffff" }}>EB1A Readiness</h3>
           <div className="flex flex-col items-center gap-4">
-            <CircularProgress value={72} size={110} strokeWidth={10} label="Overall" />
-            <CircularProgress value={78} size={110} strokeWidth={10} label="EB1A Score" />
+            <CircularProgress value={selectedClient?.progress ?? 0} size={110} strokeWidth={10} label="Overall" />
+            <CircularProgress value={selectedClient?.eb1aScore ?? 0} size={110} strokeWidth={10} label="EB1A Score" />
           </div>
         </div>
         <div className="md:col-span-2" style={CARD}>
@@ -82,7 +170,6 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Pie + bar */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div style={CARD}>
           <h3 className="text-sm font-bold mb-4" style={{ color: "#ffffff" }}>Criteria Strength Distribution</h3>
@@ -97,10 +184,10 @@ export default function ReportsPage() {
           </ResponsiveContainer>
         </div>
         <div style={CARD}>
-          <h3 className="text-sm font-bold mb-1" style={{ color: "#ffffff" }}>Monthly Deliverables</h3>
-          <p className="text-xs mb-4" style={{ color: "#737373" }}>June 2025 highlights</p>
+          <h3 className="text-sm font-bold mb-1" style={{ color: "#ffffff" }}>Deliverables</h3>
+          <p className="text-xs mb-4" style={{ color: "#737373" }}>{period} activity summary</p>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={[MONTHLY_ACTIVITY[5]]}>
+            <BarChart data={[MONTHLY_ACTIVITY[5] ?? { month: "Now", pr: 0, papers: 0, awards: 0, podcasts: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#737373" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#737373" }} axisLine={false} tickLine={false} />
@@ -114,10 +201,9 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Service progress */}
       <div style={CARD}>
         <h3 className="text-sm font-bold mb-1" style={{ color: "#ffffff" }}>Service-wise Progress</h3>
-        <p className="text-xs mb-5" style={{ color: "#737373" }}>Completion percentages — June 2025</p>
+        <p className="text-xs mb-5" style={{ color: "#737373" }}>Completion percentages</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
           {[
             { name: "Digital PR", value: 65 },
@@ -139,53 +225,6 @@ export default function ReportsPage() {
               <ProgressBar value={s.value} size="sm" />
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Achievements */}
-      <div style={CARD}>
-        <h3 className="text-sm font-bold mb-4" style={{ color: "#ffffff" }}>Key Achievements — June 2025</h3>
-        <div className="space-y-2">
-          {[
-            { icon: "🏆", text: "NeurIPS Best Paper Award certificate uploaded and approved by attorney" },
-            { icon: "📰", text: "8 PR articles published this month (TechCrunch, VentureBeat, Forbes in progress)" },
-            { icon: "📄", text: "Nature Machine Intelligence paper officially published and added to criteria evidence" },
-            { icon: "🎤", text: "Keynote at World Economic Forum — 3,200 attendees. Certificate uploaded." },
-            { icon: "🏛️", text: "ACM Senior Membership renewed through 2027. IEEE membership active." },
-          ].map((a, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ backgroundColor: "#1a1a1a" }}>
-              <span className="text-xl shrink-0">{a.icon}</span>
-              <p className="text-xs" style={{ color: "#a3a3a3" }}>{a.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Next steps */}
-      <div style={CARD}>
-        <h3 className="text-sm font-bold mb-4" style={{ color: "#ffffff" }}>Next Steps — July 2025</h3>
-        <div className="space-y-1">
-          {[
-            { priority: "High", text: "Submit Forbes op-ed draft by July 15", owner: "Meera Joshi" },
-            { priority: "High", text: "Apply for MIT Technology Review 35 Under 35 (deadline Jul 31)", owner: "Rahul Verma" },
-            { priority: "High", text: "Upload salary certificate for attorney review", owner: "Client" },
-            { priority: "Medium", text: "Start ISBN registration for book project", owner: "Rahul Verma" },
-            { priority: "Low", text: "Record podcast episode 2", owner: "Rahul Verma" },
-          ].map((t, i) => {
-            const prStyle =
-              t.priority === "High" ? { bg: "#2d0f0f", color: "#f87171" } :
-              t.priority === "Medium" ? { bg: "#1f1400", color: "#fbbf24" } :
-              { bg: "#1a1a1a", color: "#737373" };
-            return (
-              <div key={i} className="flex items-center gap-3 py-2.5" style={{ borderBottom: i < 4 ? "1px solid #1a1a1a" : "none" }}>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: prStyle.bg, color: prStyle.color }}>
-                  {t.priority}
-                </span>
-                <p className="text-xs flex-1" style={{ color: "#a3a3a3" }}>{t.text}</p>
-                <span className="text-[10px] shrink-0" style={{ color: "#4a4a4a" }}>{t.owner}</span>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

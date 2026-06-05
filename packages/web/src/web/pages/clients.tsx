@@ -24,9 +24,54 @@ function formatMoney(value = 0) {
   return `Rs. ${Math.round(value).toLocaleString("en-IN")}`;
 }
 
+type AddClientForm = {
+  name: string;
+  email: string;
+  phone: string;
+  country: string;
+  profession: string;
+  designation: string;
+  company: string;
+  category: string;
+  priority: Client["priority"];
+  assignedManager: string;
+};
+
+function ClientFormField({
+  label,
+  field,
+  form,
+  setForm,
+  placeholder = "",
+  type = "text",
+}: {
+  label: string;
+  field: keyof AddClientForm;
+  form: AddClientForm;
+  setForm: React.Dispatch<React.SetStateAction<AddClientForm>>;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#737373" }}>{label}</label>
+      <input
+        type={type}
+        value={form[field] as string}
+        onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none"
+        style={{ backgroundColor: "#1a1a1a", border: "1px solid #2a2a2a", color: "#f5f5f5" }}
+        onFocus={e => (e.currentTarget.style.borderColor = "#ffe500")}
+        onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")}
+      />
+    </div>
+  );
+}
+
 // ── Add Client Modal ────────────────────────────────────────
 function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClose: () => void; onAdded: () => void }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AddClientForm>({
     name: "", email: "", phone: "", country: "", profession: "", designation: "",
     company: "", category: "Extraordinary Ability – Science & Technology",
     priority: "Medium" as Client["priority"], assignedManager: "",
@@ -69,21 +114,6 @@ function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClos
     setTimeout(() => { onAdded(); onClose(); }, 800);
   }
 
-  const Field = ({ label, field, placeholder = "", type = "text" }: { label: string; field: keyof typeof form; placeholder?: string; type?: string }) => (
-    <div>
-      <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#737373" }}>{label}</label>
-      <input
-        type={type}
-        value={form[field] as string}
-        onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none"
-        style={inputStyle}
-        onFocus={focusBorder}
-        onBlur={blurBorder}
-      />
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.85)" }} onClick={onClose}>
@@ -102,14 +132,14 @@ function AddClientModal({ ownerId, onClose, onAdded }: { ownerId: string; onClos
         {/* Body */}
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Full Name *" field="name" placeholder="Dr. Jane Smith" />
-            <Field label="Email *" field="email" placeholder="jane@example.com" type="email" />
-            <Field label="Phone" field="phone" placeholder="+1 (555) 000-0000" />
-            <Field label="Country" field="country" placeholder="India → USA" />
-            <Field label="Profession" field="profession" placeholder="Computer Science" />
-            <Field label="Designation" field="designation" placeholder="Research Scientist" />
-            <Field label="Company / Institution" field="company" placeholder="Google, Stanford..." />
-            <Field label="Manager" field="assignedManager" placeholder="Priya Sharma" />
+            <ClientFormField label="Full Name *" field="name" form={form} setForm={setForm} placeholder="Dr. Jane Smith" />
+            <ClientFormField label="Email *" field="email" form={form} setForm={setForm} placeholder="jane@example.com" type="email" />
+            <ClientFormField label="Phone" field="phone" form={form} setForm={setForm} placeholder="+1 (555) 000-0000" />
+            <ClientFormField label="Country" field="country" form={form} setForm={setForm} placeholder="India to USA" />
+            <ClientFormField label="Profession" field="profession" form={form} setForm={setForm} placeholder="Computer Science" />
+            <ClientFormField label="Designation" field="designation" form={form} setForm={setForm} placeholder="Research Scientist" />
+            <ClientFormField label="Company / Institution" field="company" form={form} setForm={setForm} placeholder="Google, Stanford..." />
+            <ClientFormField label="Manager" field="assignedManager" form={form} setForm={setForm} placeholder="Priya Sharma" />
           </div>
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#737373" }}>Category</label>
@@ -633,3 +663,4 @@ export default function ClientsPage() {
     </div>
   );
 }
+
