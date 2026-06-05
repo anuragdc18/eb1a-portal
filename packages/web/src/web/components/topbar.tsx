@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Bell, Search, LogOut } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
-import { NOTIFICATIONS } from "../lib/mock-data";
+import { NOTIFICATIONS } from "../lib/portal-data";
 
 interface TopbarProps {
   title: string;

@@ -8,7 +8,7 @@ import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge, PriorityBadge } from "../../components/ui/badge";
 import { ProgressBar, CircularProgress } from "../../components/ui/progress";
 import { Avatar } from "../../components/ui/avatar";
-import { CLIENTS, TASKS, TEAM_MEMBERS, MONTHLY_ACTIVITY, SERVICE_PROGRESS, CLIENT_READINESS } from "../../lib/mock-data";
+import { CLIENTS, TASKS, TEAM_MEMBERS, MONTHLY_ACTIVITY, SERVICE_PROGRESS, CLIENT_READINESS } from "../../lib/portal-data";
 import { cn } from "../../lib/utils";
 
 const RADAR_DATA = [

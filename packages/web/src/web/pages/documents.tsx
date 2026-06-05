@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, Upload, FileText, CheckCircle, XCircle, AlertCircle, Clock, Download, Eye } from "lucide-react";
 import { StrengthBadge } from "../components/ui/badge";
 import { Avatar } from "../components/ui/avatar";
-import { DOCUMENTS, type Document } from "../lib/mock-data";
+import { DOCUMENTS, type Document } from "../lib/portal-data";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
   "Approved":       { bg: "#0d2b1a", color: "#4ade80", icon: <CheckCircle size={13} /> },

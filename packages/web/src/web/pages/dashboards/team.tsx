@@ -3,7 +3,7 @@ import { CheckSquare, Clock, AlertCircle, Upload, MessageSquare } from "lucide-r
 import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge, PriorityBadge } from "../../components/ui/badge";
 import { Avatar } from "../../components/ui/avatar";
-import { TASKS, type Task, type Status } from "../../lib/mock-data";
+import { TASKS, type Task, type Status } from "../../lib/portal-data";
 import { cn } from "../../lib/utils";
 
 const SERVICES = ["All", "Digital PR", "LinkedIn", "Awards", "Research Paper", "Memberships", "Podcast", "Webinar", "Website"];

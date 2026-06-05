@@ -4,7 +4,7 @@ import { Card, CardHeader, CardBody } from "../components/ui/card";
 import { StatusBadge, PriorityBadge } from "../components/ui/badge";
 import { ProgressBar, CircularProgress } from "../components/ui/progress";
 import { Avatar } from "../components/ui/avatar";
-import { getVisibleClients, CLIENTS, toggleAdminClientAccess, ADMIN_CLIENT_ACCESS, type Client } from "../lib/mock-data";
+import { getVisibleClients, CLIENTS, toggleAdminClientAccess, ADMIN_CLIENT_ACCESS, type Client } from "../lib/portal-data";
 import { DEMO_ACCOUNTS } from "../lib/auth-context";
 import { useAuth } from "../lib/auth-context";
 

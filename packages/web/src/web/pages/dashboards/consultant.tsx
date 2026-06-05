@@ -3,7 +3,7 @@ import { CheckCircle, XCircle, Clock, AlertCircle, Star, FileText } from "lucide
 import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge, StrengthBadge } from "../../components/ui/badge";
 import { Avatar } from "../../components/ui/avatar";
-import { DOCUMENTS, CRITERIA } from "../../lib/mock-data";
+import { DOCUMENTS, CRITERIA } from "../../lib/portal-data";
 
 export default function ConsultantDashboard({ onNavigate }: { onNavigate?: (v: string) => void }) {
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);

@@ -70,3 +70,11 @@ npm run build:web
 ## Database
 
 Supabase/Postgres manages the database schema. Keep the real keys in `.env`; do not commit them.
+
+To create the portal tables:
+
+1. Open Supabase dashboard.
+2. Go to SQL Editor.
+3. Paste and run `supabase/schema.sql`.
+
+The frontend reads portal records from Supabase tables such as `portal_clients`, `portal_tasks`, `portal_documents`, `portal_criteria`, and the service tracker tables. Each table stores records as `{ id, data }`, where `data` is JSON matching the portal UI shape.

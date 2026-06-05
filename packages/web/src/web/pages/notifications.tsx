@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NOTIFICATIONS } from "../lib/mock-data";
+import { NOTIFICATIONS } from "../lib/portal-data";
 import { Bell, FileText, MessageSquare, CheckCircle, Clock, AlertTriangle, Settings } from "lucide-react";
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {

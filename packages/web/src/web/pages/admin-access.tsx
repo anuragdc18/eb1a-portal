@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Shield, UserCog, CheckSquare, Square, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { Avatar } from "../components/ui/avatar";
-import { CLIENTS, ADMIN_CLIENT_ACCESS, toggleAdminClientAccess, getVisibleClients } from "../lib/mock-data";
+import { CLIENTS, ADMIN_CLIENT_ACCESS, toggleAdminClientAccess, getVisibleClients } from "../lib/portal-data";
 import { DEMO_ACCOUNTS } from "../lib/auth-context";
 
 // Get all admin accounts from demo

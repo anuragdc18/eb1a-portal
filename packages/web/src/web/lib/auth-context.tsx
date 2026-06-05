@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import type { Role } from "./mock-data";
+import type { Role } from "./portal-data";
 
 export type AppRole = Role | "admin";
 

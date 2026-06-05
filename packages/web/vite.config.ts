@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		plugins: [honoDevPlugin(), react(), tailwind()],
+		build: {
+			target: "es2022",
+		},
 		resolve: {
 			alias: {
 				"@": path.resolve(__dirname, "./src/web"),

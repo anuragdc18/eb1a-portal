@@ -1,5 +1,5 @@
 import { cn } from "../../lib/utils";
-import type { Status, Priority, Strength } from "../../lib/mock-data";
+import type { Status, Priority, Strength } from "../../lib/portal-data";
 
 const STATUS_STYLES: Record<Status, { bg: string; color: string }> = {
   "Not Started":         { bg: "#1a1a1a", color: "#737373" },

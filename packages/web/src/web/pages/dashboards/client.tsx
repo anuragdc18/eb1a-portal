@@ -3,9 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Card, CardHeader, CardBody, KPICard } from "../../components/ui/card";
 import { StatusBadge } from "../../components/ui/badge";
 import { CircularProgress, ProgressBar } from "../../components/ui/progress";
-import { CLIENTS, CRITERIA, TASKS, MONTHLY_ACTIVITY } from "../../lib/mock-data";
-
-const CLIENT = CLIENTS[0];
+import { CLIENTS, CRITERIA, TASKS, MONTHLY_ACTIVITY } from "../../lib/portal-data";
 
 const SERVICE_COMPLETION = [
   { name: "Digital PR", value: 65 },
@@ -50,7 +48,24 @@ const TOOLTIP = ({ active, payload, label }: any) => {
 };
 
 export default function ClientDashboard({ onNavigate }: { onNavigate?: (v: string) => void }) {
-  const myTasks = TASKS.filter((t) => t.clientId === "c1");
+  const CLIENT = CLIENTS[0];
+  const myTasks = CLIENT ? TASKS.filter((t) => t.clientId === CLIENT.id) : [];
+
+  if (!CLIENT) {
+    return (
+      <div className="p-6 overflow-y-auto flex-1" style={{ backgroundColor: "#0a0a0a" }}>
+        <Card>
+          <CardBody className="text-center py-12">
+            <FileText size={32} className="mx-auto mb-4" style={{ color: "#737373" }} />
+            <h2 className="text-xl font-bold mb-2" style={{ color: "#ffffff" }}>No client profile found</h2>
+            <p className="text-sm max-w-md mx-auto" style={{ color: "#737373" }}>
+              Supabase is connected, but the portal tables do not have client records yet. Run the schema and add client data to populate this dashboard.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto flex-1" style={{ backgroundColor: "#0a0a0a" }}>

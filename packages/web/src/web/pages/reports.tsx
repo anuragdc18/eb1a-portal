@@ -1,7 +1,7 @@
 import { Download, FileBarChart, Calendar } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ProgressBar, CircularProgress } from "../components/ui/progress";
-import { MONTHLY_ACTIVITY } from "../lib/mock-data";
+import { MONTHLY_ACTIVITY } from "../lib/portal-data";
 
 const PROGRESS_DATA = [
   { month: "Jan", score: 25 }, { month: "Feb", score: 32 }, { month: "Mar", score: 41 },

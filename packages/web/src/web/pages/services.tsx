@@ -5,7 +5,7 @@ import { ProgressBar } from "../components/ui/progress";
 import {
   PR_ARTICLES, AWARDS, RESEARCH_PAPERS, MEMBERSHIPS, LINKEDIN_DATA,
   WEBINARS, PODCASTS, BOOKS, WEBSITE_DATA, JURY_WORK
-} from "../lib/mock-data";
+} from "../lib/portal-data";
 
 const TABS = [
   { id: "pr", label: "Digital PR" },

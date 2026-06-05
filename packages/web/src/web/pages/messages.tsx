@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MESSAGES } from "../lib/mock-data";
+import { MESSAGES } from "../lib/portal-data";
 import { useAuth } from "../lib/auth-context";
 import { Search, Plus, Send, Paperclip } from "lucide-react";
 

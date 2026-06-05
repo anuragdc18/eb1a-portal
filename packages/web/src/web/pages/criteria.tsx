@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Target, Plus, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { StrengthBadge } from "../components/ui/badge";
 import { ProgressBar } from "../components/ui/progress";
-import { CRITERIA } from "../lib/mock-data";
+import { CRITERIA } from "../lib/portal-data";
 
 const ATTORNEY_COLORS: Record<string, { bg: string; color: string }> = {
   "Not Reviewed": { bg: "#1a1a1a", color: "#737373" },
