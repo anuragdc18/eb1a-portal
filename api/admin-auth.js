@@ -1,14 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const normalizedSupabaseUrl = supabaseUrl?.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
 
-function initials(name: string) {
+function initials(name) {
   return name.split(" ").filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "U";
 }
 
-export default async function handler(req: any, res: any) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (!normalizedSupabaseUrl || !serviceRoleKey) return res.status(500).json({ error: "Supabase admin env is not configured." });
 
@@ -59,7 +59,7 @@ export default async function handler(req: any, res: any) {
   }
 
   if (action === "update") {
-    const authUpdates: Record<string, any> = {};
+    const authUpdates = {};
     if (updates?.email) authUpdates.email = String(updates.email).trim().toLowerCase();
     if (updates?.password) authUpdates.password = String(updates.password);
     if (updates?.name || updates?.role) {
@@ -73,7 +73,7 @@ export default async function handler(req: any, res: any) {
       if (error) return res.status(400).json({ error: error.message });
     }
 
-    const profileUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+    const profileUpdates = { updated_at: new Date().toISOString() };
     if (updates?.email) profileUpdates.email = String(updates.email).trim().toLowerCase();
     if (updates?.name) {
       profileUpdates.name = String(updates.name).trim();
@@ -87,4 +87,4 @@ export default async function handler(req: any, res: any) {
   }
 
   return res.status(400).json({ error: "Unknown action." });
-}
+};
