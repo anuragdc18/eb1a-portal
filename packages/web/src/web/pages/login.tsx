@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../lib/auth-context";
-import { Target, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,9 +30,11 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-10">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#ffe500" }}>
-            <Target size={26} style={{ color: "#0a0a0a" }} />
-          </div>
+          <img
+            src="/infigrowth-logo-icon.png"
+            alt="Infigrowth Media logo"
+            className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4"
+          />
           <h1 className="text-3xl font-black mb-1" style={{ color: "#ffffff" }}>Infigrowth Media</h1>
           <p className="text-sm mt-2" style={{ color: "#737373" }}>EB1A Growth Tracker</p>
         </div>

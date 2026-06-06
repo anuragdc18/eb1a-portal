@@ -71,9 +71,11 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: "1px solid #1f1f1f" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#ffe500" }}>
-          <Target size={16} style={{ color: "#0a0a0a" }} />
-        </div>
+        <img
+          src="/infigrowth-logo-icon.png"
+          alt="Infigrowth Media logo"
+          className="w-8 h-8 rounded-lg object-cover shrink-0"
+        />
         {(!collapsed || isMobile) && (
           <div className="overflow-hidden">
             <div className="font-bold text-sm leading-tight" style={{ color: "#ffffff" }}>Infigrowth Media</div>
