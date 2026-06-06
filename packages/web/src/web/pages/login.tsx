@@ -35,8 +35,32 @@ export default function LoginPage() {
             alt="Infigrowth Media logo"
             className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4"
           />
-          <h1 className="text-3xl font-black mb-1" style={{ color: "#ffffff" }}>Infigrowth Media</h1>
-          <p className="text-sm mt-2" style={{ color: "#737373" }}>EB1A Growth Tracker</p>
+          <h1
+            className="text-3xl font-black mb-3"
+            style={{
+              color: "#ffffff",
+              fontFamily: "Arial Black, Inter, system-ui, sans-serif",
+              textShadow: "0 1px 0 #0a0a0a, 0 0 18px rgba(255, 229, 0, 0.2)",
+              WebkitTextStroke: "0.4px rgba(10,10,10,0.8)",
+            }}
+          >
+            Infigrowth <span style={{ color: "#ffe500", textShadow: "0 0 22px rgba(255, 229, 0, 0.45)" }}>Media</span>
+          </h1>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <span className="h-px w-10" style={{ backgroundColor: "#d7a900" }} />
+            <p
+              className="text-xs uppercase font-semibold"
+              style={{
+                color: "#a3a3a3",
+                letterSpacing: "0.32em",
+                fontFamily: "Inter, Arial, system-ui, sans-serif",
+                textShadow: "0 1px 0 #000, 0 0 12px rgba(255,255,255,0.2)",
+              }}
+            >
+              EB1A Growth Tracker
+            </p>
+            <span className="h-px w-10" style={{ backgroundColor: "#d7a900" }} />
+          </div>
         </div>
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: "#111111", border: "1px solid #222222" }}>
