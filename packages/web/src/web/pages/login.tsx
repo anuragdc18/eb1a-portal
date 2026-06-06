@@ -33,9 +33,8 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#ffe500" }}>
             <Target size={26} style={{ color: "#0a0a0a" }} />
           </div>
-          <h1 className="text-3xl font-black mb-1" style={{ color: "#ffffff" }}>Extraordinary</h1>
-          <p className="text-base font-semibold" style={{ color: "#ffe500" }}>Profile OS</p>
-          <p className="text-sm mt-2" style={{ color: "#737373" }}>EB1A Case Management Platform</p>
+          <h1 className="text-3xl font-black mb-1" style={{ color: "#ffffff" }}>Infigrowth Media</h1>
+          <p className="text-sm mt-2" style={{ color: "#737373" }}>EB1A Growth Tracker</p>
         </div>
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: "#111111", border: "1px solid #222222" }}>

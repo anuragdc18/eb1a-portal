@@ -76,8 +76,8 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
         </div>
         {(!collapsed || isMobile) && (
           <div className="overflow-hidden">
-            <div className="font-bold text-sm leading-tight" style={{ color: "#ffffff" }}>Extraordinary</div>
-            <div className="text-xs font-semibold" style={{ color: "#ffe500" }}>Profile OS</div>
+            <div className="font-bold text-sm leading-tight" style={{ color: "#ffffff" }}>Infigrowth Media</div>
+            <div className="text-[11px] font-medium" style={{ color: "#737373" }}>EB1A Growth Tracker</div>
           </div>
         )}
         {isMobile && (

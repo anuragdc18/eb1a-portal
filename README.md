@@ -1,4 +1,4 @@
-# Extraordinary Profile OS
+# Infigrowth Media EB1A Growth Tracker
 
 EB1A profile management portal frontend.
 
