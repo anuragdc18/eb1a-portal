@@ -25,7 +25,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
-  updateAccount: (id: string, updates: Partial<AuthAccount>) => Promise<void>;
+  updateAccount: (id: string, updates: Partial<AuthAccount>) => Promise<{ success: boolean; error?: string }>;
   createAccount: (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => Promise<void>;
 }
 
@@ -243,26 +243,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateAccount = async (id: string, updates: Partial<AuthAccount>) => {
     if (isSupabaseConfigured) {
+      const current = (await supabase.auth.getUser()).data.user;
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, value]) => value !== undefined && value !== "")
+      ) as Partial<AuthAccount>;
+      if (!Object.keys(cleanUpdates).length) return { success: true };
+
+      if (current?.id === id && !cleanUpdates.password && !cleanUpdates.role && typeof cleanUpdates.active !== "boolean") {
+        const profileUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (cleanUpdates.name) {
+          profileUpdates.name = cleanUpdates.name.trim();
+          profileUpdates.avatar = initials(profileUpdates.name);
+        }
+        if (cleanUpdates.email) profileUpdates.email = cleanEmail(cleanUpdates.email);
+
+        if (cleanUpdates.name || cleanUpdates.email) {
+          const { error } = await supabase.auth.updateUser({
+            ...(cleanUpdates.email ? { email: cleanEmail(cleanUpdates.email) } : {}),
+            ...(cleanUpdates.name ? { data: { name: cleanUpdates.name.trim(), role: user?.role } } : {}),
+          });
+          if (error && cleanUpdates.email) return { success: false, error: error.message };
+        }
+
+        const { error } = await supabase.from("portal_profiles").update(profileUpdates).eq("id", id);
+        if (error) return { success: false, error: error.message };
+        await loadAccounts();
+        await loadProfile(current);
+        return { success: true };
+      }
+
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       const response = await fetch("/api/admin-auth", {
         method: "POST",
         headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ action: "update", id, updates }),
+        body: JSON.stringify({ action: "update", id, updates: cleanUpdates }),
       });
       if (!response.ok) {
-        const profileUpdates = {
-          role: updates.role,
-          name: updates.name,
-          email: updates.email,
-          avatar: updates.name ? initials(updates.name) : updates.avatar,
-          active: updates.active,
-        };
-        await supabase.from("portal_profiles").update(profileUpdates).eq("id", id);
+        const data = await response.json().catch(() => ({}));
+        return { success: false, error: data.error ?? "Could not update account." };
       }
       await loadAccounts();
-      const current = (await supabase.auth.getUser()).data.user;
       await loadProfile(current);
-      return;
+      return { success: true };
     }
 
     const next = accounts.map((item) => {
@@ -273,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveAccounts(next);
     const updatedSelf = next.find((item) => item.id === user?.id);
     if (updatedSelf) setUser(publicUser(updatedSelf));
+    return { success: true };
   };
 
   const createAccount = async (account: Omit<AuthAccount, "id" | "avatar" | "active"> & { active?: boolean }) => {

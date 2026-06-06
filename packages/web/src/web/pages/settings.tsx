@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../lib/auth-context";
 
 const TABS = ["Profile", "Notifications", "Team", "Security"];
@@ -82,9 +82,35 @@ function FormRow({ label, hint, children }: { label: string; hint?: string; chil
 }
 
 function ProfileTab() {
-  const { user } = useAuth();
-  const [saved, setSaved] = useState(false);
-  function handleSave() { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  const { user, updateAccount } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    const parts = user?.name?.split(" ").filter(Boolean) ?? [];
+    setFirstName(parts[0] ?? "");
+    setLastName(parts.slice(1).join(" "));
+    setEmail(user?.email ?? "");
+  }, [user?.id, user?.name, user?.email]);
+
+  async function handleSave() {
+    if (!user) return;
+    setMessage(null);
+    const name = [firstName, lastName].map((part) => part.trim()).filter(Boolean).join(" ");
+    if (!name) {
+      setMessage({ type: "error", text: "Name is required." });
+      return;
+    }
+    const result = await updateAccount(user.id, { name, email });
+    if (!result.success) {
+      setMessage({ type: "error", text: result.error ?? "Could not save profile." });
+      return;
+    }
+    setMessage({ type: "success", text: "Profile saved permanently." });
+    setTimeout(() => setMessage(null), 2200);
+  }
 
   return (
     <div className="space-y-5">
@@ -107,17 +133,17 @@ function ProfileTab() {
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>First Name</label>
-            <DarkInput defaultValue={user?.name?.split(" ")[0] ?? ""} />
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl focus:outline-none" style={inputStyle.base} onFocus={e => (e.currentTarget.style.borderColor = inputStyle.focus)} onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")} />
           </div>
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>Last Name</label>
-            <DarkInput defaultValue={user?.name?.split(" ").slice(1).join(" ") ?? ""} />
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl focus:outline-none" style={inputStyle.base} onFocus={e => (e.currentTarget.style.borderColor = inputStyle.focus)} onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>Email</label>
-            <DarkInput type="email" defaultValue={user?.email ?? ""} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl focus:outline-none" style={inputStyle.base} onFocus={e => (e.currentTarget.style.borderColor = inputStyle.focus)} onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")} />
           </div>
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#737373" }}>Phone</label>
@@ -136,13 +162,18 @@ function ProfileTab() {
           />
         </div>
         <div className="flex justify-end gap-3 mt-4">
+          {message && (
+            <div className="mr-auto px-3 py-2 rounded-xl text-xs font-semibold" style={{ backgroundColor: message.type === "success" ? "#0d2b1a" : "#2d0f0f", color: message.type === "success" ? "#4ade80" : "#f87171" }}>
+              {message.text}
+            </div>
+          )}
           <button className="px-4 py-2 text-xs font-semibold rounded-xl" style={{ color: "#737373" }}>Cancel</button>
           <button
             onClick={handleSave}
             className="px-4 py-2 text-xs font-bold rounded-xl transition-colors"
-            style={{ backgroundColor: saved ? "#1a4a1a" : "#ffe500", color: saved ? "#4ade80" : "#0a0a0a" }}
+            style={{ backgroundColor: message?.type === "success" ? "#1a4a1a" : "#ffe500", color: message?.type === "success" ? "#4ade80" : "#0a0a0a" }}
           >
-            {saved ? "Saved!" : "Save Changes"}
+            {message?.type === "success" ? "Saved!" : "Save Changes"}
           </button>
         </div>
       </Card>
@@ -269,7 +300,21 @@ function SecurityTab() {
   const { user, accounts, updatePassword, updateAccount } = useAuth();
   const [form, setForm] = useState({ current: "", next: "", confirm: "" });
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const canManageAccounts = user?.role === "superadmin";
+  const [accountMessage, setAccountMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const canManageAccounts = user?.role === "superadmin" || user?.role === "admin";
+  const canFullyManageAccounts = user?.role === "superadmin";
+  const editableAccounts = canFullyManageAccounts ? accounts : accounts.filter((account) => account.role !== "superadmin");
+
+  const saveAccount = async (id: string, updates: Parameters<typeof updateAccount>[1], label = "Account updated.") => {
+    setAccountMessage(null);
+    const result = await updateAccount(id, updates);
+    if (!result.success) {
+      setAccountMessage({ type: "error", text: result.error ?? "Could not update account." });
+      return;
+    }
+    setAccountMessage({ type: "success", text: label });
+    setTimeout(() => setAccountMessage(null), 2200);
+  };
 
   const savePassword = async () => {
     setMessage(null);
@@ -306,22 +351,62 @@ function SecurityTab() {
       </Card>
       {canManageAccounts && (
         <Card>
-          <SectionHeader title="Account Access" subtitle="Update emails, temporary passwords, roles, and active status for portal users." />
+          <SectionHeader
+            title="Account Access"
+            subtitle={canFullyManageAccounts ? "Update names, emails, temporary passwords, roles, and active status." : "Admins can update names for non-superadmin accounts."}
+          />
+          {accountMessage && (
+            <div className="mb-3 px-3 py-2 rounded-xl text-xs font-semibold" style={{ backgroundColor: accountMessage.type === "success" ? "#0d2b1a" : "#2d0f0f", color: accountMessage.type === "success" ? "#4ade80" : "#f87171" }}>
+              {accountMessage.text}
+            </div>
+          )}
           <div className="space-y-2">
-            {accounts.map((account) => (
-              <div key={account.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_120px_90px] gap-2 p-3 rounded-xl" style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}>
-                <input defaultValue={account.email} onBlur={(e) => updateAccount(account.id, { email: e.target.value })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
-                <input type="password" defaultValue={account.password} onBlur={(e) => updateAccount(account.id, { password: e.target.value })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
-                <select defaultValue={account.role} onChange={(e) => updateAccount(account.id, { role: e.target.value as typeof account.role })} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base}>
-                  <option value="superadmin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="client">Client</option>
-                  <option value="team">Team</option>
-                  <option value="consultant">Consultant</option>
-                </select>
-                <button onClick={() => updateAccount(account.id, { active: !(account.active ?? true) })} className="px-3 py-2 text-[10px] font-bold rounded-xl" style={{ backgroundColor: (account.active ?? true) ? "#0d2b1a" : "#2d0f0f", color: (account.active ?? true) ? "#4ade80" : "#f87171" }}>
-                  {(account.active ?? true) ? "Active" : "Inactive"}
-                </button>
+            {editableAccounts.map((account) => (
+              <div
+                key={account.id}
+                className={canFullyManageAccounts ? "grid grid-cols-1 md:grid-cols-[1.1fr_1.2fr_1fr_120px_90px] gap-2 p-3 rounded-xl" : "grid grid-cols-1 md:grid-cols-[1fr_1fr_110px] gap-2 p-3 rounded-xl"}
+                style={{ backgroundColor: "#0d0d0d", border: "1px solid #1a1a1a" }}
+              >
+                <input
+                  defaultValue={account.name}
+                  onBlur={(e) => {
+                    const name = e.target.value.trim();
+                    if (name && name !== account.name) void saveAccount(account.id, { name }, "Name saved permanently.");
+                  }}
+                  className="px-3 py-2 text-xs rounded-xl focus:outline-none"
+                  style={inputStyle.base}
+                  placeholder="Full name"
+                />
+                {canFullyManageAccounts ? (
+                  <>
+                    <input defaultValue={account.email} onBlur={(e) => {
+                      const email = e.target.value.trim();
+                      if (email && email !== account.email) void saveAccount(account.id, { email }, "Email saved.");
+                    }} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
+                    <input type="password" placeholder="New password" onBlur={(e) => {
+                      const password = e.target.value;
+                      if (password) {
+                        void saveAccount(account.id, { password }, "Password saved.");
+                        e.currentTarget.value = "";
+                      }
+                    }} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base} />
+                    <select defaultValue={account.role} onChange={(e) => void saveAccount(account.id, { role: e.target.value as typeof account.role }, "Role saved.")} className="px-3 py-2 text-xs rounded-xl focus:outline-none" style={inputStyle.base}>
+                      <option value="superadmin">Super Admin</option>
+                      <option value="admin">Admin</option>
+                      <option value="client">Client</option>
+                      <option value="team">Team</option>
+                      <option value="consultant">Consultant</option>
+                    </select>
+                    <button onClick={() => void saveAccount(account.id, { active: !(account.active ?? true) }, "Status saved.")} className="px-3 py-2 text-[10px] font-bold rounded-xl" style={{ backgroundColor: (account.active ?? true) ? "#0d2b1a" : "#2d0f0f", color: (account.active ?? true) ? "#4ade80" : "#f87171" }}>
+                      {(account.active ?? true) ? "Active" : "Inactive"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="px-3 py-2 text-xs rounded-xl truncate" style={{ ...inputStyle.base, color: "#737373" }}>{account.email}</div>
+                    <div className="px-3 py-2 text-[10px] font-bold rounded-xl uppercase" style={{ backgroundColor: "#1a1a1a", color: "#ffe500" }}>{account.role}</div>
+                  </>
+                )}
               </div>
             ))}
           </div>

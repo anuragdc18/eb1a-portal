@@ -24,13 +24,17 @@ module.exports = async function handler(req, res) {
 
   const { data: profile } = await admin.from("portal_profiles").select("role,active").eq("id", requester.user.id).maybeSingle();
   const metaRole = requester.user.user_metadata?.role;
-  if ((profile?.role ?? metaRole) !== "superadmin" || profile?.active === false) {
-    return res.status(403).json({ error: "Only super admins can manage accounts." });
+  const requesterRole = profile?.role ?? metaRole;
+  if (!["superadmin", "admin"].includes(requesterRole) || profile?.active === false) {
+    return res.status(403).json({ error: "Only admins can manage accounts." });
   }
 
   const { action, account, id, updates } = req.body ?? {};
 
   if (action === "create") {
+    if (requesterRole !== "superadmin") {
+      return res.status(403).json({ error: "Only super admins can create accounts." });
+    }
     const email = String(account?.email ?? "").trim().toLowerCase();
     const password = String(account?.password ?? "");
     const name = String(account?.name ?? "").trim();
@@ -59,6 +63,19 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === "update") {
+    const { data: targetProfile } = await admin.from("portal_profiles").select("role").eq("id", String(id)).maybeSingle();
+    if (!targetProfile) return res.status(404).json({ error: "Account not found." });
+    if (requesterRole === "admin") {
+      if (targetProfile.role === "superadmin") {
+        return res.status(403).json({ error: "Admins cannot edit super admin accounts." });
+      }
+      const requestedKeys = Object.keys(updates ?? {});
+      const adminAllowed = requestedKeys.every((key) => ["name", "avatar"].includes(key));
+      if (!adminAllowed) {
+        return res.status(403).json({ error: "Admins can only update account names." });
+      }
+    }
+
     const authUpdates = {};
     if (updates?.email) authUpdates.email = String(updates.email).trim().toLowerCase();
     if (updates?.password) authUpdates.password = String(updates.password);

@@ -167,6 +167,20 @@ drop policy if exists "portal profiles authenticated read" on public.portal_prof
 drop policy if exists "portal profiles own update" on public.portal_profiles;
 drop policy if exists "portal profiles superadmin manage" on public.portal_profiles;
 
+create or replace function public.portal_current_role()
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select role
+  from public.portal_profiles
+  where id = auth.uid() and active = true
+  limit 1
+$$;
+
+grant execute on function public.portal_current_role() to authenticated;
+
 create policy "portal profiles authenticated read" on public.portal_profiles
   for select to authenticated using (true);
 
@@ -177,14 +191,8 @@ create policy "portal profiles own update" on public.portal_profiles
 
 create policy "portal profiles superadmin manage" on public.portal_profiles
   for all to authenticated
-  using (exists (
-    select 1 from public.portal_profiles p
-    where p.id = auth.uid() and p.role = 'superadmin' and p.active = true
-  ))
-  with check (exists (
-    select 1 from public.portal_profiles p
-    where p.id = auth.uid() and p.role = 'superadmin' and p.active = true
-  ));
+  using (public.portal_current_role() = 'superadmin')
+  with check (public.portal_current_role() = 'superadmin');
 
 drop policy if exists "portal anon read clients" on public.portal_clients;
 drop policy if exists "portal anon read access" on public.portal_admin_client_access;
